@@ -16,58 +16,8 @@ from HTSeq import (
     FileOrSequence
 )
 
-
-class GFF_Reader(FileOrSequence):
-    """Parse a GFF file (Modified from HTSeq.GFF_Reader)
-
-    Pass the constructor either a file name or an iterator of lines of a
-    GFF files. If a file name is specified, it may refer to a gzip compressed
-    file.
-
-    Iterating over the object then yields GenomicFeature objects.
-    """
-
-    def __init__(self, filename_or_sequence, end_included=True):
-        FileOrSequence.__init__(self, filename_or_sequence)
-        self.end_included = end_included
-        self.metadata = {}
-
-    def __iter__(self) -> Iterator[Tuple[GenomicFeature, str]]:
-        for line in FileOrSequence.__iter__(self):
-            if isinstance(line, bytes):
-                line = line.decode()
-            if line == "\n":
-                continue
-            if line.startswith('#'):
-                if line.startswith("##"):
-                    mo = re.compile(r"##\s*(\S+)\s+(\S*)").match(line)
-                    if mo:
-                        self.metadata[mo.group(1)] = mo.group(2)
-                continue
-            (seqname, source, feature, start, end, score,
-             strand, frame, attributeStr) = line.split("\t", 8)
-            (attr, name) = parse_GFF_attribute_string(attributeStr, True)
-            if self.end_included:
-                iv = GenomicInterval(
-                        seqname,
-                        int(start) - 1, int(end),
-                        strand)
-            else:
-                iv = GenomicInterval(
-                        seqname,
-                        int(start) - 1, int(end) - 1,
-                        strand)
-            f = GenomicFeature(name, feature, iv)
-            if score != ".":
-                score = float(score)
-            if frame != ".":
-                frame = int(frame)
-            f.source = source
-            f.score = score
-            f.frame = frame
-            f.attr = attr
-            yield (f, line)
-
+from gfftool.reader import GFF_Reader
+from gfftool.filter import GFF_Filter
 
 def attr_to_string(attrs: Dict):
     attr_list = []
@@ -210,24 +160,7 @@ def convert_action(options: Namespace) -> None:
 
 
 def filter_action(options: Namespace) -> None:
-    for feature, raw_line in GFF_Reader(options.gff_file):
-        if options.seqid and feature.iv.chrom not in options.seqid:
-            continue
-        if options.type and feature.type not in options.type:
-            continue
-        if options.source and feature.source not in options.source:
-            continue
-        if options.attributes:
-            matched = []
-            for attr_keyval in options.attributes:
-                key, val = attr_keyval.split("=")
-                if key in feature.attr and val == feature.attr[key]:
-                    matched.append(True)
-                else:
-                    matched.append(False)
-            if not all(matched):
-                continue
-
+    for feature, raw_line in GFF_Filter(options.gff_file, vars(options)):
         # Print out selected fields
         if options.print_field == "all":
             sys.stdout.write(raw_line)
@@ -241,7 +174,8 @@ def filter_action(options: Namespace) -> None:
 
 
 def seq_action(options: Namespace) -> None:
-    pass
+    gff_file = options.gff_file
+    fasta_file = options.genome
 
 
 def cli():
@@ -297,11 +231,8 @@ def cli():
         " in output GFF file. (default: %(default)s)",
     )
 
-    filter_cmd = subparsers.add_parser(
-        "filter", help="Filter records in GFF files based on specified parameters.", parents=[parent_parser]
-    )
-    filter_cmd.set_defaults(func=filter_action)
-    filter_cmd.add_argument(
+    parent_filter = argparse.ArgumentParser(add_help=False)
+    parent_filter.add_argument(
         "-i",
         "--seqid",
         dest="seqid",
@@ -309,7 +240,7 @@ def cli():
         default=[],
         help="Filter records with given seqid (aka. chromosome name), such as `-i chr1A -i chr3B`.",
     )
-    filter_cmd.add_argument(
+    parent_filter.add_argument(
         "-s",
         "--source",
         dest="source",
@@ -317,7 +248,7 @@ def cli():
         default=[],
         help="Filter records with given source, such as `-s IWGSC -s Genbank`.",
     )
-    filter_cmd.add_argument(
+    parent_filter.add_argument(
         "-t",
         "--type",
         dest="type",
@@ -325,16 +256,23 @@ def cli():
         default=[],
         help="Filter records with given feature types, such as `-t exon -t CDS`.",
     )
-    filter_cmd.add_argument(
+    parent_filter.add_argument(
         "-a",
         "--attributes",
         dest="attributes",
         action="append",
         default=[],
-        help="Filter records with given key value pairs, such as `-a ID=GENE0545 -a Name=nad2`."
+        help="Filter GFF records with given key value pairs, such as `-a ID=GENE0545 -a Name=nad2`."
         "Note that this option behaves differently from the other filtering options in that "
         "a record will only pass the filter if all of the specified attributes match.",
     )
+
+
+    filter_cmd = subparsers.add_parser(
+        "filter", help="Filter records in GFF files based on specified parameters.",
+        parents=[parent_parser, parent_filter]
+    )
+    filter_cmd.set_defaults(func=filter_action)
     filter_cmd.add_argument(
         "-p",
         "--print-field",
@@ -347,7 +285,8 @@ def cli():
     )
 
     seq_cmd = subparsers.add_parser(
-        "seq", help="Extract sequences from FASTA files based on GFF annotation.", parents=[parent_parser]
+        "seq", help="Extract sequences from FASTA files based on GFF annotation.",
+        parents=[parent_parser, parent_filter]
     )
     seq_cmd.set_defaults(func=seq_action)
     seq_cmd.add_argument(

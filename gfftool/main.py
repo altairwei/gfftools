@@ -244,7 +244,7 @@ def seq_action(options: Namespace) -> None:
     pass
 
 
-if __name__ == "__main__":
+def cli():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("gff_file", help="GFF3 file obtained from Ensembl.", type=str, metavar="GFF_FILE")
 

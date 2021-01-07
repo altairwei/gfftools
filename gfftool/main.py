@@ -16,6 +16,7 @@ from HTSeq import (
     FileOrSequence
 )
 
+from gfftool import __version__
 from gfftool.reader import GFF_Reader
 from gfftool.filter import GFF_Filter
 
@@ -123,7 +124,7 @@ def stats_action(options: Namespace) -> None:
         "half_open_intervals": defaultdict(int),
         "types": defaultdict(int)
     }
-    for _, line in GFF_Reader(options.gff_file, show_progress=True):
+    for _, line in GFF_Reader(options.gff_file, show_progress=options.verbose):
         (seqname, source, feature_type, start, end, score,
             strand, frame, attributeStr) = line.split("\t", 8)
         if feature_type in ("exon", "CDS", "start_codon", "stop_codon"):
@@ -145,7 +146,7 @@ def convert_action(options: Namespace) -> None:
     for type_aes in options.type_mapping:
         old_type, new_type = type_aes.split(":")
         type_mapping[old_type] = new_type
-    gff3 = GFF_Reader(options.gff_file, show_progress=True)
+    gff3 = GFF_Reader(options.gff_file, show_progress=options.verbose)
     i = 0
     transcript_parent = {}
     for feature, _ in gff3:
@@ -160,7 +161,7 @@ def convert_action(options: Namespace) -> None:
 
 
 def filter_action(options: Namespace) -> None:
-    for feature, raw_line in GFF_Filter(options.gff_file, vars(options), show_progress=True):
+    for feature, raw_line in GFF_Filter(options.gff_file, vars(options), show_progress=options.verbose):
         # Print out selected fields
         if options.print_field == "all":
             sys.stdout.write(raw_line)
@@ -180,8 +181,10 @@ def seq_action(options: Namespace) -> None:
 def cli():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("gff_file", help="GFF3 file obtained from Ensembl.", type=str, metavar="GFF_FILE")
+    parent_parser.add_argument("-v", "--verbose", help="Show progress bar.", action="store_true")
 
     parser = argparse.ArgumentParser(description="GFF tool.")
+    parser.add_argument('--version', action='version', version='gfftool %s' % __version__)
     subparsers = parser.add_subparsers()
 
     stats_cmd = subparsers.add_parser(

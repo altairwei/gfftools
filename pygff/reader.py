@@ -9,7 +9,7 @@ from HTSeq import (
     parse_GFF_attribute_string
 )
 
-from gfftool.utils import ProgressBar
+from pygff.utils import ProgressBar
 
 class TextFile(object):
     def __init__(self, filename, show_progress=False):

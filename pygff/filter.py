@@ -3,7 +3,7 @@ from typing import Dict, Tuple, Iterator, MutableSequence
 
 from HTSeq import GenomicFeature
 
-from gfftool.reader import GFF_Reader
+from pygff.reader import GFF_Reader
 
 
 class GFF_Filter(GFF_Reader):

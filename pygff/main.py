@@ -17,10 +17,10 @@ from HTSeq import (
 )
 from pyfaidx import Fasta
 
-from gfftool import __version__
-from gfftool.reader import GFF_Reader
-from gfftool.filter import GFF_Filter
-from gfftool.sequences import genome_extract
+from pygff import __version__
+from pygff.reader import GFF_Reader
+from pygff.filter import GFF_Filter
+from pygff.sequences import genome_extract
 
 def attr_to_string(attrs: Dict):
     attr_list = []
@@ -198,7 +198,7 @@ def cli():
     parent_parser.add_argument("-v", "--verbose", help="Show progress bar.", action="store_true")
 
     parser = argparse.ArgumentParser(description="GFF tool.")
-    parser.add_argument('--version', action='version', version='gfftool %s' % __version__)
+    parser.add_argument('--version', action='version', version='pygff %s' % __version__)
     subparsers = parser.add_subparsers()
 
     stats_cmd = subparsers.add_parser(

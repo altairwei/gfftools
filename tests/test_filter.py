@@ -3,7 +3,7 @@ import tempfile
 import os
 from contextlib import contextmanager
 
-from gfftool.filter import GFF_Filter
+from pygff.filter import GFF_Filter
 
 @contextmanager
 def tempinput(data):

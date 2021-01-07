@@ -16,8 +16,8 @@ def get_version(rel_path):
             raise RuntimeError("Unable to find version string.")
 
 setup(
-    name="GFFTool",
-    version=get_version("gfftool/__init__.py"),
+    name="PyGFF",
+    version=get_version("pygff/__init__.py"),
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -26,6 +26,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        gfftool=gfftool.main:cli
+        gfftool=pygff.main:cli
     ''',
 )

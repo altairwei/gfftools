@@ -118,25 +118,21 @@ def get_gtf_line(
 
 
 def stats_action(options: Namespace) -> None:
-    #TODO: Guess end included or not. See: https://htseq.readthedocs.io/en/master/features.html 
     summary = {
-        "closed_intervals": defaultdict(int),
-        "half_open_intervals": defaultdict(int),
-        "types": defaultdict(int)
+        "seqname": defaultdict(int),
+        "source": defaultdict(int),
+        "types": defaultdict(int),
+        "strand": defaultdict(int),
+        "phase": defaultdict(int)
     }
     for _, line in GFF_Reader(options.gff_file, show_progress=options.verbose):
         (seqname, source, feature_type, start, end, score,
             strand, frame, attributeStr) = line.split("\t", 8)
-        if feature_type in ("exon", "CDS", "start_codon", "stop_codon"):
-            # The GFF specification is unclear on whether the end coordinate marks
-            # the last base-pair of the feature (closed intervals, end_included=True)
-            # or the one after (half-open intervals, end_included=False).
-            is_end_included = ((int(end) - int(start) + 1) % 3) == 0
-            if is_end_included:
-                summary["closed_intervals"][feature_type] += 1
-            else:
-                summary["half_open_intervals"][feature_type] += 1
+        summary["seqname"][seqname] += 1
+        summary["source"][source] += 1
         summary["types"][feature_type] += 1
+        summary["strand"][strand] += 1
+        summary["phase"][frame] += 1
     json.dump(summary, sys.stdout, indent=2)
     print("", file=sys.stdout)
 

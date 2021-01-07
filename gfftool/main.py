@@ -15,10 +15,12 @@ from HTSeq import (
     parse_GFF_attribute_string,
     FileOrSequence
 )
+from pyfaidx import Fasta
 
 from gfftool import __version__
 from gfftool.reader import GFF_Reader
 from gfftool.filter import GFF_Filter
+from gfftool.sequences import genome_extract
 
 def attr_to_string(attrs: Dict):
     attr_list = []
@@ -172,6 +174,22 @@ def filter_action(options: Namespace) -> None:
 
 def seq_action(options: Namespace) -> None:
     fasta_file = options.genome
+    for feature, _ in GFF_Filter(options.gff_file, vars(options), show_progress=options.verbose):
+        # Note: pyfaidx sequence slicing uses 0-based half-open interval, GFF_Reader too.
+        sequence = genome_extract(
+            fasta_file, feature.iv.chrom,
+            feature.iv.start, feature.iv.end,
+            feature.iv.strand)
+        sys.stdout.write(
+            ">chromosome:{source}:{chr}:{start}:{end}:{strand}\n{sequence}\n".format(
+                source = feature.source,
+                chr = feature.iv.chrom,
+                start = str(feature.iv.start + 1),
+                end = str(feature.iv.end),
+                strand = feature.iv.strand,
+                sequence = sequence
+            )
+        )
 
 
 def cli():

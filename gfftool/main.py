@@ -256,6 +256,13 @@ def cli():
         help="Filter records with given feature types, such as `-t exon -t CDS`.",
     )
     parent_filter.add_argument(
+        "--strand",
+        dest="strand",
+        action="append",
+        default=[],
+        help="Filter records with given source, such as `-s IWGSC -s Genbank`.",
+    )
+    parent_filter.add_argument(
         "-a",
         "--attributes",
         dest="attributes",
@@ -264,6 +271,13 @@ def cli():
         help="Filter GFF records with given key value pairs, such as `-a ID=GENE0545 -a Name=nad2`."
         "Note that this option behaves differently from the other filtering options in that "
         "a record will only pass the filter if all of the specified attributes match.",
+    )
+    parent_filter.add_argument(
+        "-e",
+        "--expression",
+        dest="expression",
+        default=None,
+        help="Execute the specified python code and use the output as filtering criteria.",
     )
 
 

@@ -24,6 +24,9 @@ class GFF_Filter(GFF_Reader):
             if ("source" in self.params and self.params["source"] and
                 feature.source not in self.params["source"]):
                 continue
+            if ("strand" in self.params and self.params["strand"] and
+                feature.iv.strand not in self.params["strand"]):
+                continue
             if "attributes" in self.params:
                 matched = []
                 for attr_keyval in self.params["attributes"]:
@@ -33,6 +36,27 @@ class GFF_Filter(GFF_Reader):
                     else:
                         matched.append(False)
                 if not all(matched):
+                    continue
+            if "expression" in self.params and self.params["expression"]:
+                env = {
+                    "seqid": feature.iv.chrom,
+                    "source": feature.source,
+                    "type": feature.type,
+                    "start": feature.iv.start + 1,
+                    "end": feature.iv.end,
+                    "score": feature.score,
+                    "strand": feature.iv.strand,
+                    "phase": str(feature.frame),
+                    "attributes": feature.attr
+                }
+                
+                cond = False
+                try:
+                    cond = eval(self.params["expression"], env)
+                except:
+                    sys.stderr.write("Error occurred when execute: " + self.params["expression"])
+
+                if not cond:
                     continue
 
             yield (feature, raw_line)

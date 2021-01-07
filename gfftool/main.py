@@ -123,7 +123,7 @@ def stats_action(options: Namespace) -> None:
         "half_open_intervals": defaultdict(int),
         "types": defaultdict(int)
     }
-    for _, line in GFF_Reader(options.gff_file):
+    for _, line in GFF_Reader(options.gff_file, show_progress=True):
         (seqname, source, feature_type, start, end, score,
             strand, frame, attributeStr) = line.split("\t", 8)
         if feature_type in ("exon", "CDS", "start_codon", "stop_codon"):
@@ -145,7 +145,7 @@ def convert_action(options: Namespace) -> None:
     for type_aes in options.type_mapping:
         old_type, new_type = type_aes.split(":")
         type_mapping[old_type] = new_type
-    gff3 = GFF_Reader(options.gff_file)
+    gff3 = GFF_Reader(options.gff_file, show_progress=True)
     i = 0
     transcript_parent = {}
     for feature, _ in gff3:
@@ -160,7 +160,7 @@ def convert_action(options: Namespace) -> None:
 
 
 def filter_action(options: Namespace) -> None:
-    for feature, raw_line in GFF_Filter(options.gff_file, vars(options)):
+    for feature, raw_line in GFF_Filter(options.gff_file, vars(options), show_progress=True):
         # Print out selected fields
         if options.print_field == "all":
             sys.stdout.write(raw_line)
@@ -174,7 +174,6 @@ def filter_action(options: Namespace) -> None:
 
 
 def seq_action(options: Namespace) -> None:
-    gff_file = options.gff_file
     fasta_file = options.genome
 
 

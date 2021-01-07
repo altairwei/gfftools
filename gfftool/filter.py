@@ -1,3 +1,4 @@
+import sys
 from typing import Dict, Tuple, Iterator
 
 from HTSeq import GenomicFeature
@@ -7,8 +8,8 @@ from gfftool.reader import GFF_Reader
 
 class GFF_Filter(GFF_Reader):
 
-    def __init__(self, gff_file: str, filter_params: Dict, end_included=True):
-        GFF_Reader.__init__(self, gff_file, end_included)
+    def __init__(self, gff_file: str, filter_params: Dict, end_included=True, show_progress=False):
+        GFF_Reader.__init__(self, gff_file, end_included, show_progress=show_progress)
         self.gff_file = gff_file
         self.params = filter_params
 

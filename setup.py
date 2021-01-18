@@ -26,6 +26,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        gfftool=pygff.main:cli
+        gfftools=pygff.main:cli
     ''',
 )

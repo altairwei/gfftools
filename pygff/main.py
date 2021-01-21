@@ -212,11 +212,11 @@ def cli():
     convert_cmd.set_defaults(func=convert_action)
     convert_cmd.add_argument(
         "-p",
-        "--reserve-id-prefix",
+        "--retain-id-prefix",
         dest="id_prefix",
         action="append",
         default=[],
-        help="The ID prefix to be reserved. Example `-p transcript -p gene`"
+        help="The ID prefix to be retained. Example `-p transcript -p gene`"
         " will produce 'transcript:G9200.1' and 'gene:G9200' as IDs.",
     )
     convert_cmd.add_argument(

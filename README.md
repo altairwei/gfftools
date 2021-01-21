@@ -1,6 +1,14 @@
 # PyGFF - Useful tools for working with GTF/GFF3 format files.
 
-## How to use `gfftools`
+## How to install gfftools
+
+Install PyGFF from git repo via pip:
+
+```shell
+pip install git+https://github.com/altairwei/PyGFF.git
+```
+
+## How to use`gfftools
 
 `gfftools` contains a series of subcommands, includes `stats`, `conv`, `filter` and `seq`.
 
@@ -46,4 +54,23 @@ For example:
 
 ```shell
 gfftools filter -e "(end - start + 1) % 3 == 0" Homo_sapiens.GRCh38.99.gtf > triad.gtf
+```
+
+### Extract gene sequences from the genome based on GFF file
+
+In general, we want to extract gene sequences from genome with a small number of features, so the `gfftools seq` command supports the same GFF filter as `gfftools filter`.
+
+```shell
+gfftools seq -a gene_id=ENSG00000177133 -g Homo_sapiens.GRCh38.dna.primary_assembly.fa Homo_sapiens.GRCh38.99.gtf > ENSG00000177133.fa
+```
+
+### Convert GFF3 to GTF
+
+Work in progress.
+
+
+### Count features' properties of GFF file
+
+```shell
+gfftools stats Homo_sapiens.GRCh38.99.gtf
 ```

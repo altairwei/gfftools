@@ -64,6 +64,8 @@ In general, we want to extract gene sequences from genome with a small number of
 gfftools seq -a gene_id=ENSG00000177133 -g Homo_sapiens.GRCh38.dna.primary_assembly.fa Homo_sapiens.GRCh38.99.gtf > ENSG00000177133.fa
 ```
 
+The file `ENSG00000177133.fa` in above example would be a multi-fasta file with the sequences corresponding to features of filtered GFF content. The sequence names of genome fasta file (in this case, it means `Homo_sapiens.GRCh38.dna.primary_assembly.fa`) should match what in 1st column of the input GFF file.
+
 ### Convert GFF3 to GTF
 
 Work in progress.

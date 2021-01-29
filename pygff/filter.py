@@ -1,89 +1,156 @@
-import sys
-from typing import Dict, Tuple, Iterator, MutableSequence
+from typing import (
+    Dict, List, Tuple, Iterator, MutableSequence,
+    Union, Sequence
+)
+from abc import ABC, abstractmethod
 
 from HTSeq import GenomicFeature
 
 from pygff.reader import GFF_Reader
 
 
+class Filter(ABC):
+    """A class represents a GFF filter."""
+
+    @abstractmethod
+    def validate(self, feature: GenomicFeature) -> bool:
+        """"""
+        pass
+
+
+class SimpleValueUnionFilter(Filter):
+    """Pass the filter if value meets any one of candidates."""
+
+    def __init__(self, param):
+        self.valid_values = []
+        if isinstance(param, str):
+            self.valid_values.append(param)
+        elif isinstance(param, Sequence):
+            self.valid_values.extend(param)
+
+    def is_valid(self, value):
+        # Do not check if filter is not set.
+        if not self.valid_values:
+            return True
+        if value in self.valid_values:
+            return True
+        else:
+            return False
+
+
+class SeqIdFilter(SimpleValueUnionFilter):
+    def validate(self, feature: GenomicFeature) -> bool:
+        return self.is_valid(feature.iv.chrom)
+
+
+class TypeFilter(SimpleValueUnionFilter):
+    def validate(self, feature: GenomicFeature) -> bool:
+        return self.is_valid(feature.type)
+
+
+class SourceFilter(SimpleValueUnionFilter):
+    def validate(self, feature: GenomicFeature) -> bool:
+        return self.is_valid(feature.source)
+
+
+class StrandFilter(SimpleValueUnionFilter):
+    def validate(self, feature: GenomicFeature) -> bool:
+        return self.is_valid(feature.iv.strand)
+
+
+class AttributesFilter(Filter):
+    def __init__(self, param):
+        self.attr_pairs = []
+        if isinstance(param, str):
+            self.attr_pairs.append(param.split("="))
+        elif isinstance(param, Sequence):
+            for attr_keyval in param:
+                self.attr_pairs.append(attr_keyval.split("="))
+
+    def validate(self, feature: GenomicFeature) -> bool:
+        # Skip if filter isn't set
+        if not self.attr_pairs:
+            return True
+        matched = []
+        for key, val in self.attr_pairs:
+            if key in feature.attr and val == feature.attr[key]:
+                matched.append(True)
+            else:
+                matched.append(False)
+        if not all(matched):
+            return False
+        else:
+            return True
+
+
+class ExpressionFilter(Filter):
+    def __init__(self, param):
+        self.expression = None
+        if isinstance(param, str):
+            self.expression = param
+
+    def validate(self, feature: GenomicFeature) -> bool:
+        if not self.expression:
+            return True
+        env = {
+            "seqid": feature.iv.chrom,
+            "source": feature.source,
+            "type": feature.type,
+            "start": feature.iv.start + 1,
+            "end": feature.iv.end,
+            "score": feature.score,
+            "strand": feature.iv.strand,
+            "phase": str(feature.frame),
+            "attributes": feature.attr
+        }
+
+        return bool(eval(self.expression, env))
+
+
+FILTER_NAME_MAP = {
+    "seqid": SeqIdFilter,
+    "type": TypeFilter,
+    "source": SourceFilter,
+    "strand": StrandFilter,
+    "attributes": AttributesFilter,
+    "expression": ExpressionFilter
+}
+
+
+def make_filters(filter_params: Dict) -> List[Filter]:
+    filters = []
+    for key, val in filter_params.items():
+        filters.append(FILTER_NAME_MAP[key](val))
+    return filters
+
+
+class FilterChain:
+    def __init__(self, filter_params):
+        self.filters = make_filters(filter_params)
+
+    def add_filter(self, filter: Filter):
+        self.filters.append(filter)
+
+    def validate(self, feature):
+        for filter in self.filters:
+            if not filter.validate(feature):
+                return False
+        return True
+
+
 class GFF_Filter(GFF_Reader):
 
-    def __init__(self, gff_file: str, filter_params: Dict, end_included=True, show_progress=False):
-        GFF_Reader.__init__(self, gff_file, end_included, show_progress=show_progress)
+    def __init__(
+            self, gff_file: str, filter_params: Dict,
+            end_included=True, show_progress=False):
+        GFF_Reader.__init__(
+            self, gff_file, end_included, show_progress=show_progress)
         self.gff_file = gff_file
-        self.check_seqid = False
-        self.check_type = False
-        self.check_source = False
-        self.check_strand = False
-        self.check_attributes = False
-        self.eval_expression = False
-        self.params = {}
-        if ("seqid" in filter_params and filter_params["seqid"] and
-            isinstance(filter_params["seqid"], MutableSequence)):
-            self.params["seqid"] = filter_params["seqid"]
-            self.check_seqid = True
-        if ("type" in filter_params and filter_params["type"] and
-            isinstance(filter_params["type"], MutableSequence)):
-            self.params["type"] = filter_params["type"]
-            self.check_type = True
-        if ("source" in filter_params and filter_params["source"] and
-            isinstance(filter_params["source"], MutableSequence)):
-            self.params["source"] = filter_params["source"]
-            self.check_source = True
-        if ("strand" in filter_params and filter_params["strand"] and
-            isinstance(filter_params["strand"], MutableSequence)):
-            self.params["strand"] = filter_params["strand"]
-            self.check_strand = True
-        if ("attributes" in filter_params and filter_params["attributes"] and
-            isinstance(filter_params["attributes"], MutableSequence)):
-            self.params["attributes"] = []
-            for attr_keyval in filter_params["attributes"]:
-                self.params["attributes"].append(attr_keyval.split("="))
-            self.check_attributes = True
-        if ("expression" in filter_params and filter_params["expression"] and
-            isinstance(filter_params["expression"], str)):
-            self.params["expression"] = filter_params["expression"]
-            self.eval_expression = True
+        self.filter_chain = FilterChain(filter_params)
 
     def __iter__(self) -> Iterator[Tuple[GenomicFeature, str]]:
         for feature, raw_line in GFF_Reader.__iter__(self):
-            if (self.check_seqid and
-                feature.iv.chrom not in self.params["seqid"]):
+            if self.filter_chain.validate(feature):
+                yield (feature, raw_line)
+            else:
                 continue
-            if (self.check_type and
-                feature.type not in self.params["type"]):
-                continue
-            if (self.check_source and
-                feature.source not in self.params["source"]):
-                continue
-            if (self.check_strand and
-                feature.iv.strand not in self.params["strand"]):
-                continue
-            if self.check_attributes:
-                matched = []
-                for key, val in self.params["attributes"]:
-                    if key in feature.attr and val == feature.attr[key]:
-                        matched.append(True)
-                    else:
-                        matched.append(False)
-                if not all(matched):
-                    continue
-            if self.eval_expression:
-                env = {
-                    "seqid": feature.iv.chrom,
-                    "source": feature.source,
-                    "type": feature.type,
-                    "start": feature.iv.start + 1,
-                    "end": feature.iv.end,
-                    "score": feature.score,
-                    "strand": feature.iv.strand,
-                    "phase": str(feature.frame),
-                    "attributes": feature.attr
-                }
-
-                cond = bool(eval(self.params["expression"], env))
-
-                if not cond:
-                    continue
-
-            yield (feature, raw_line)

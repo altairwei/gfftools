@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 from pygff.filter import GFF_Filter
 
+
 @contextmanager
 def tempinput(data):
     temp = tempfile.NamedTemporaryFile(delete=False)

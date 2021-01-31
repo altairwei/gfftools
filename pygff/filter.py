@@ -1,6 +1,5 @@
 from typing import (
-    Dict, List, Tuple, Iterator, MutableSequence,
-    Union, Sequence
+    Dict, List, Tuple, Iterator, Sequence
 )
 from abc import ABC, abstractmethod
 
@@ -14,8 +13,7 @@ class Filter(ABC):
 
     @abstractmethod
     def validate(self, feature: GenomicFeature) -> bool:
-        """"""
-        pass
+        """Determine if the feature can pass this filter."""
 
 
 class SimpleValueUnionFilter(Filter):
@@ -23,7 +21,8 @@ class SimpleValueUnionFilter(Filter):
 
     def __init__(self, param):
         self.valid_values = []
-        if isinstance(param, str):
+        # Empty string is not allowed
+        if isinstance(param, str) and param:
             self.valid_values.append(param)
         elif isinstance(param, Sequence):
             self.valid_values.extend(param)
@@ -61,7 +60,8 @@ class StrandFilter(SimpleValueUnionFilter):
 class AttributesFilter(Filter):
     def __init__(self, param):
         self.attr_pairs = []
-        if isinstance(param, str):
+        # Empty string is not allowed
+        if isinstance(param, str) and param:
             self.attr_pairs.append(param.split("="))
         elif isinstance(param, Sequence):
             for attr_keyval in param:
@@ -86,7 +86,8 @@ class AttributesFilter(Filter):
 class ExpressionFilter(Filter):
     def __init__(self, param):
         self.expression = None
-        if isinstance(param, str):
+        # Emtpry string is not allowed
+        if isinstance(param, str) and param:
             self.expression = param
 
     def validate(self, feature: GenomicFeature) -> bool:

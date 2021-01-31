@@ -23,6 +23,7 @@ def filter_gff(gff_file, filter_params):
         output_lines.append(raw_line)
     return "".join(output_lines)
 
+
 GTF_CONTENT = """140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id "";
 140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
 140	Twinscan	inter	9712	13182	.	-	.	gene_id ""; transcript_id "";
@@ -50,13 +51,18 @@ GTF_CONTENT = """140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id ""
 """
 
 
-class GFFFilterTestCase(unittest.TestCase):
+class GffFilterTestCase(unittest.TestCase):
 
     def test_seqid_filter(self):
         with tempinput(GTF_CONTENT) as gff_file:
             # Empty filter should be ignored
-            self.assertEqual(filter_gff(gff_file, {"seqid": []}), GTF_CONTENT)
-            self.assertEqual(filter_gff(gff_file, {"seqid": ["381"]}),
+            for param in [[], ""]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"seqid": param}), GTF_CONTENT)
+
+            for param in [["381"], "381"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"seqid": param}),
 """381	Twinscan	exon	150	200	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	exon	300	401	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	CDS	380	401	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
@@ -68,7 +74,7 @@ class GFFFilterTestCase(unittest.TestCase):
 381	Twinscan	start_codon	380	382	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	stop_codon	708	710	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 """
-            )
+                    )
 
     def test_source_filter(self):
         gff_content = """381	Twinscan	CDS	380	401	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
@@ -77,12 +83,16 @@ class GFFFilterTestCase(unittest.TestCase):
 381	insdc	stop_codon	708	710	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 """
         with tempinput(gff_content) as gff_file:
-            self.assertEqual(filter_gff(gff_file, {"source": []}), gff_content)
-            self.assertEqual(filter_gff(gff_file, {"source": ["insdc"]}),
+            for param in [[], ""]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"source": param}), gff_content)
+            for param in [["insdc"], "insdc"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"source": param}),
 """381	insdc	start_codon	380	382	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 381	insdc	stop_codon	708	710	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 """
-            )
+                    )
             self.assertEqual(filter_gff(gff_file, {"source": ["Twinscan", "havana"]}),
 """381	Twinscan	CDS	380	401	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 381	havana	exon	700	800	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
@@ -91,8 +101,12 @@ class GFFFilterTestCase(unittest.TestCase):
 
     def test_type_filter(self):
         with tempinput(GTF_CONTENT) as gff_file:
-            self.assertEqual(filter_gff(gff_file, {"type": []}), GTF_CONTENT)
-            self.assertEqual(filter_gff(gff_file, {"type": ["CDS"]}),
+            for param in [[], ""]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"type": param}), GTF_CONTENT)
+            for param in [["CDS"], "CDS"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"type": param}),
 """140	Twinscan	CDS	66996	66999	.	-	1	gene_id "140.000"; transcript_id "140.000.1";
 140	Twinscan	CDS	70207	70294	.	-	2	gene_id "140.000"; transcript_id "140.000.1";
 140	Twinscan	CDS	71696	71807	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
@@ -101,7 +115,7 @@ class GFFFilterTestCase(unittest.TestCase):
 381	Twinscan	CDS	501	650	.	+	2	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	CDS	700	707	.	+	2	gene_id "381.000"; transcript_id "381.000.1";
 """
-            )
+                    )
 
             self.assertEqual(filter_gff(gff_file, {"type": ["CDS", "stop_codon"]}),
 """140	Twinscan	stop_codon	66993	66995	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
@@ -127,9 +141,13 @@ class GFFFilterTestCase(unittest.TestCase):
 
     def test_strand_filter(self):
         with tempinput(GTF_CONTENT) as gff_file:
-            self.assertEqual(filter_gff(gff_file, {"strand": []}), GTF_CONTENT)
+            for param in [[], ""]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"strand": param}), GTF_CONTENT)
             self.assertEqual(filter_gff(gff_file, {"strand": ["+", "-"]}), GTF_CONTENT)
-            self.assertEqual(filter_gff(gff_file, {"strand": ["+"]}),
+            for param in [["+"], "+"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"strand": param}),
 """381	Twinscan	exon	150	200	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	exon	300	401	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	CDS	380	401	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
@@ -141,8 +159,10 @@ class GFFFilterTestCase(unittest.TestCase):
 381	Twinscan	start_codon	380	382	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 381	Twinscan	stop_codon	708	710	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
 """
-            )
-            self.assertEqual(filter_gff(gff_file, {"strand": ["-"]}),
+                    )
+            for param in [["-"], "-"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"strand": param}),
 """140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id "";
 140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
 140	Twinscan	inter	9712	13182	.	-	.	gene_id ""; transcript_id "";
@@ -158,7 +178,7 @@ class GFFFilterTestCase(unittest.TestCase):
 140	Twinscan	CDS	73222	73222	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
 140	Twinscan	5UTR	73223	73504	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
 """
-            )
+                    )
 
     def test_attributes_filter(self):
         gtf_content = """140	Twinscan	CDS	66996	66999	.	-	1	gene_id "140.000"; transcript_id "140.000.1"; ensembl_phase "2"; rank "11"
@@ -173,10 +193,15 @@ class GFFFilterTestCase(unittest.TestCase):
 
         with tempinput(gtf_content) as gtf_file:
             with tempinput(gff3_content) as gff3_file:
-                self.assertEqual(filter_gff(gtf_file, {"attributes": []}), gtf_content)
-                self.assertEqual(filter_gff(gff3_file, {"attributes": []}), gff3_content)
-                self.assertEqual(filter_gff(gtf_file, {"attributes": ["gene_id=140.000"]}), gtf_content)
-                self.assertEqual(filter_gff(gff3_file, {"attributes": ["gene_id=140.000"]}), gff3_content)
+                for param in [[], ""]:
+                    with self.subTest(seqid=param):
+                        self.assertEqual(filter_gff(gtf_file, {"attributes": param}), gtf_content)
+                        self.assertEqual(filter_gff(gff3_file, {"attributes": param}), gff3_content)
+                for param in [["gene_id=140.000"], "gene_id=140.000"]:
+                    with self.subTest(seqid=param):
+                        self.assertEqual(filter_gff(gtf_file, {"attributes": param}), gtf_content)
+                        self.assertEqual(filter_gff(gff3_file, {"attributes": param}), gff3_content)
+
                 self.assertEqual(filter_gff(gtf_file, {"attributes": ["gene_id=140.000", "ensembl_phase=2", "rank=11"]}), 
 """140	Twinscan	CDS	66996	66999	.	-	1	gene_id "140.000"; transcript_id "140.000.1"; ensembl_phase "2"; rank "11"
 """

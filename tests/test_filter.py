@@ -3,7 +3,7 @@ import tempfile
 import os
 from contextlib import contextmanager
 
-from pygff.filter import GFF_Filter
+from pygff.filter import GFF_Filter, FilterError
 
 
 @contextmanager
@@ -220,3 +220,90 @@ class GffFilterTestCase(unittest.TestCase):
             self.assertEqual(filter_gff(gff_file, {
                 "expression": "(end - start) == 3381"
             }), """140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id "";\n""")
+
+    def test_region_filter(self):
+        with tempinput(GTF_CONTENT) as gff_file:
+            for param in [[], ""]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"region": param}), GTF_CONTENT)
+            for param in [["140:8523-9711"], "140:8523-9711"]:
+                with self.subTest(seqid=param):
+                    self.assertEqual(filter_gff(gff_file, {"region": param}),
+"""140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+"""
+                    )
+            # Test multiple regions
+            self.assertEqual(filter_gff(gff_file, {"region": ["140:8523-9711", "140:65149-65487"]}),
+"""140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	3UTR	65149	65487	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+"""
+            )
+            # Only seqname
+            self.assertEqual(filter_gff(gff_file, {"region": ["140"]}),
+"""140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter	9712	13182	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	3UTR	65149	65487	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	3UTR	66823	66992	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	stop_codon	66993	66995	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	CDS	66996	66999	.	-	1	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	intron_CNS	70103	70151	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	CDS	70207	70294	.	-	2	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	CDS	71696	71807	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	start_codon	71805	71806	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	start_codon	73222	73222	.	-	2	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	CDS	73222	73222	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	5UTR	73223	73504	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+"""
+            )
+            # Only start position
+            self.assertEqual(filter_gff(gff_file, {"region": ["140:71805", "381:700"]}),
+"""140	Twinscan	start_codon	71805	71806	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	start_codon	73222	73222	.	-	2	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	CDS	73222	73222	.	-	0	gene_id "140.000"; transcript_id "140.000.1";
+140	Twinscan	5UTR	73223	73504	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+381	Twinscan	exon	700	800	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	CDS	700	707	.	+	2	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	exon	900	1000	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	stop_codon	708	710	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
+"""
+            )
+            # Only end position
+            self.assertEqual(filter_gff(gff_file, {"region": ["140:-13182", "381:-401"]}),
+"""140	Twinscan	inter	5141	8522	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter	9712	13182	.	-	.	gene_id ""; transcript_id "";
+381	Twinscan	exon	150	200	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	exon	300	401	.	+	.	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	CDS	380	401	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
+381	Twinscan	start_codon	380	382	.	+	0	gene_id "381.000"; transcript_id "381.000.1";
+"""
+            )
+
+        # Test exactly region match
+        # TODO: test `end_included` option
+        region_exactly_test = """140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter_CNS	8522	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	inter_CNS	8523	9712	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	3UTR	65149	65487	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+"""
+        with tempinput(region_exactly_test) as gff_file:
+            self.assertEqual(
+                filter_gff(gff_file, {"region": ["140:8523-9711", "140:65149-65487"]}),
+"""140	Twinscan	inter_CNS	8523	9711	.	-	.	gene_id ""; transcript_id "";
+140	Twinscan	3UTR	65149	65487	.	-	.	gene_id "140.000"; transcript_id "140.000.1";
+"""
+            )
+
+        # Test wrong params
+        with tempinput(GTF_CONTENT) as gff_file:
+            with self.assertRaisesRegex(FilterError, "Region start must larger than 0"):
+                filter_gff(gff_file, {"region": "140:0-490"})
+            with self.assertRaisesRegex(FilterError, "Region end must larger than 0"):
+                filter_gff(gff_file, {"region": "140:1-0"})
+            with self.assertRaisesRegex(FilterError, "Region start must be less than end"):
+                filter_gff(gff_file, {"region": "140:170-12"})
+            with self.assertWarnsRegex(RuntimeWarning, "Start position of region filter is invalid"):
+                filter_gff(gff_file, {"region": "140:a-132"})
+            with self.assertWarnsRegex(RuntimeWarning, "End position of region filter is invalid"):
+                filter_gff(gff_file, {"region": "140:1-b"})

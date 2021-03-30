@@ -1,11 +1,17 @@
+import warnings
 from typing import (
     Dict, List, Tuple, Iterator, Sequence
 )
 from abc import ABC, abstractmethod
+from collections import namedtuple
 
 from HTSeq import GenomicFeature
 
 from pygff.reader import GFF_Reader
+
+
+class FilterError(Exception):
+    pass
 
 
 class Filter(ABC):
@@ -108,13 +114,79 @@ class ExpressionFilter(Filter):
         return bool(eval(self.expression, env))
 
 
+class RegionsFilter(Filter):
+    Region = namedtuple('Region', ['seqname', 'start', 'end'])
+
+    def __init__(self, param):
+        self.regions = []
+        # Empty string is not allowed
+        if isinstance(param, str) and param:
+            self.regions.append(self.parse_region(param))
+        elif isinstance(param, Sequence):
+            for region_string in param:
+                self.regions.append(self.parse_region(region_string))
+
+    def parse_region(self, region_string: str):
+        seqname, start, end = None, None, None
+        parts_1st = region_string.split(":", 1)
+        if len(parts_1st) > 0 and parts_1st[0]:
+            seqname = parts_1st[0]
+        if len(parts_1st) > 1:
+            parts_2nd = parts_1st[1].split("-", 1)
+            if len(parts_2nd) > 0 and parts_2nd[0]:
+                try:
+                    # Convert 1-based indexing to 0-based half-open interval
+                    start = int(parts_2nd[0]) - 1
+                    if start < 0:
+                        raise FilterError("Region start must larger than 0")
+                except ValueError:
+                    warnings.warn(
+                        "Start position of region filter is invalid"
+                        " and will be ignored", category=RuntimeWarning)
+
+            if len(parts_2nd) > 1 and parts_2nd[1]:
+                try:
+                    # In the user's view this is closed interval
+                    end = int(parts_2nd[1])
+                    if end < 1:
+                        raise FilterError("Region end must larger than 0")
+                except ValueError:
+                    warnings.warn(
+                        "End position of region filter is invalid"
+                        " and will be ignored.", category=RuntimeWarning)
+
+        if start and end and start > end:
+            raise FilterError("Region start must be less than end")
+
+        return RegionsFilter.Region(seqname, start, end)
+
+    def validate(self, feature: GenomicFeature) -> bool:
+        """
+        A feature is retained only if it starts and ends in the region.
+        """
+        if not self.regions:
+            return True
+
+        for region in self.regions:
+            if feature.iv.chrom != region.seqname:
+                continue
+            if region.start and feature.iv.start < region.start:
+                continue
+            if region.end and feature.iv.end > region.end:
+                continue
+            return True
+
+        return False
+
+
 FILTER_NAME_MAP = {
     "seqid": SeqIdFilter,
     "type": TypeFilter,
     "source": SourceFilter,
     "strand": StrandFilter,
     "attributes": AttributesFilter,
-    "expression": ExpressionFilter
+    "expression": ExpressionFilter,
+    "region": RegionsFilter
 }
 
 

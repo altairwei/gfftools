@@ -290,13 +290,23 @@ def cli():
         "a record will only pass the filter if all of the specified attributes match.",
     )
     parent_filter.add_argument(
+        "-r",
+        "--region",
+        dest="region",
+        action="append",
+        default=[],
+        help="Regions can be specified as: `SEQID[:STARTPOS[-ENDPOS]]` and"
+        " all position coordinates are 1-based. Note that only records "
+        "whose start and end points are both contained within this region "
+        "will be kept."
+    )
+    parent_filter.add_argument(
         "-e",
         "--expression",
         dest="expression",
         default=None,
         help="Execute the specified python code and use the output as filtering criteria.",
     )
-
 
     filter_cmd = subparsers.add_parser(
         "filter", help="Filter records in GFF files based on specified parameters.",

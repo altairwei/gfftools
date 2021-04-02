@@ -8,7 +8,7 @@ Install PyGFF from git repo via pip:
 pip install git+https://github.com/altairwei/PyGFF.git
 ```
 
-## How to use`gfftools
+## How to use gfftools
 
 `gfftools` contains a series of subcommands, includes `stats`, `conv`, `filter` and `seq`.
 
@@ -32,6 +32,25 @@ For example:
 
 ```shell
 gfftools filter --attributes gene_version=5 --attributes gene_biotype=lncRNA > lncRNA.gtf
+```
+
+#### Keep features in a given region
+
+Regions can be specified as: `SEQID[:STARTPOS[-ENDPOS]]` and all position coordinates are 1-based.
+
+Important note: Only records whose start and end points are both contained within this region will be kept.
+
+Examples of region specifications:
+
+* `chr1` - Output all features belongs to the reference sequence named "chr1".
+* `chr2:1000000` - The region on "chr2" beginning at base position 1,000,000 and ending at the end of the chromosome.
+* `chr2:-2000` - The region on "chr2" beginning at the start of the chromosome and ending at base position 2,000.
+* `chr3:1000-2000` - The 1001bp region on "chr3" beginning at base position 1,000 and ending at base position 2,000.
+
+For example:
+
+```shell
+gfftools filter --region chr2:1000000 --region chr3:1000-2000 Homo_sapiens.GRCh38.99.gtf > chr2_chr3_features.gtf
 ```
 
 #### Evaluate python condition expression

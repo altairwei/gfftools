@@ -193,7 +193,8 @@ FILTER_NAME_MAP = {
 def make_filters(filter_params: Dict) -> List[Filter]:
     filters = []
     for key, val in filter_params.items():
-        filters.append(FILTER_NAME_MAP[key](val))
+        if key in FILTER_NAME_MAP.keys():
+            filters.append(FILTER_NAME_MAP[key](val))
     return filters
 
 

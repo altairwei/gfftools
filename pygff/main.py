@@ -4,6 +4,7 @@ import argparse
 import sys
 import json
 import re
+import textwrap
 from argparse import ArgumentError, Namespace
 from typing import Dict, List, Tuple, Iterator
 from collections import defaultdict
@@ -21,6 +22,7 @@ from pygff import __version__
 from pygff.reader import GFF_Reader
 from pygff.filter import GFF_Filter
 from pygff.sequences import genome_extract
+from pygff.errors import SeqExtractError
 
 def attr_to_string(attrs: Dict):
     attr_list = []
@@ -176,20 +178,44 @@ def seq_action(options: Namespace) -> None:
     fasta_file = options.genome
     for feature, _ in GFF_Filter(options.gff_file, vars(options), show_progress=options.verbose):
         # Note: pyfaidx sequence slicing uses 0-based half-open interval, GFF_Reader too.
-        sequence = genome_extract(
-            fasta_file, feature.iv.chrom,
-            feature.iv.start, feature.iv.end,
-            feature.iv.strand)
-        sys.stdout.write(
-            ">chromosome:{source}:{chr}:{start}:{end}:{strand}\n{sequence}\n".format(
-                source = feature.source,
-                chr = feature.iv.chrom,
-                start = str(feature.iv.start + 1),
-                end = str(feature.iv.end),
-                strand = feature.iv.strand,
-                sequence = sequence
+        try:
+            sequence = genome_extract(
+                fasta_file, feature.iv.chrom,
+                feature.iv.start, feature.iv.end,
+                feature.iv.strand)
+
+            if options.line_length:
+                seqstr = textwrap.fill(str(sequence), options.line_length)
+            else:
+                seqstr = str(sequence)
+
+            if options.fasta_header:
+                env = {
+                    "seqid": feature.iv.chrom,
+                    "source": feature.source,
+                    "type": feature.type,
+                    "start": feature.iv.start + 1,
+                    "end": feature.iv.end,
+                    "score": feature.score,
+                    "strand": feature.iv.strand,
+                    "phase": str(feature.frame),
+                    "attributes": feature.attr
+                }
+                header = eval(options.fasta_header, env)
+            else:
+                header = "chromosome:{source}:{chr}:{start}:{end}:{strand}"
+            sys.stdout.write(
+                (">" + header + "\n" + "{sequence}\n\n").format(
+                    source = feature.source,
+                    chr = feature.iv.chrom,
+                    start = str(feature.iv.start + 1),
+                    end = str(feature.iv.end),
+                    strand = feature.iv.strand,
+                    sequence = seqstr
+                )
             )
-        )
+        except SeqExtractError:
+            print("Warning: extract failed for", feature, file=sys.stderr)
 
 
 def cli():
@@ -334,6 +360,21 @@ def cli():
         "--genome-file",
         dest="genome",
         help="Full path to a multi-fasta file with the genomic sequences.",
+    )
+    seq_cmd.add_argument(
+        "-H",
+        "--fasta-header",
+        dest="fasta_header",
+        help="Define fasta header for each features.",
+        default=None
+    )
+    seq_cmd.add_argument(
+        "-L",
+        "--line-length",
+        dest="line_length",
+        default=None,
+        type = int,
+        help="Line length for sequences."
     )
 
     options = parser.parse_args()

@@ -85,6 +85,17 @@ gfftools seq -a gene_id=ENSG00000177133 -g Homo_sapiens.GRCh38.dna.primary_assem
 
 The file `ENSG00000177133.fa` in above example would be a multi-fasta file with the sequences corresponding to features of filtered GFF content. The sequence names of genome fasta file (in this case, it means `Homo_sapiens.GRCh38.dna.primary_assembly.fa`) should match what in 1st column of the input GFF file.
 
+There are some flags to control the output format of FASTA file. For example, the following command was used to extract gene sequences of wheat with gene ID as FASTA header.
+
+```shell
+gfftools seq \
+    --type gene \
+    -g data/Triticum_aestivum.IWGSC.dna.toplevel.fa \
+    --line-length 60 \
+    --fasta-header "attributes['ID']" \
+    data/Triticum_aestivum.IWGSC.48.gff3 > data/genes.fa
+```
+
 ### Convert GFF3 to GTF
 
 Work in progress.

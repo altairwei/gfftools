@@ -365,7 +365,8 @@ def cli():
         "-H",
         "--fasta-header",
         dest="fasta_header",
-        help="Define fasta header for each features.",
+        help="Define fasta header for each features. Execute the specified"
+        "python code and use the output as headers of each record.",
         default=None
     )
     seq_cmd.add_argument(
